@@ -1,11 +1,8 @@
-
-ФАЙЛ 4: gui.py — главный софт (работает через Google Chrome)
 # gui.py — Google Ads Clicker (лицензии + настоящий Google Chrome)
 import subprocess, sys, os, threading, queue, random, time
 import tkinter as tk
 from tkinter import scrolledtext, filedialog
 import urllib.request
-
 # ---------- Проверка / установка Google Chrome ----------
 def ensure_chrome():
     try:
