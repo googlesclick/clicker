@@ -108,21 +108,20 @@ class ClickerApp:
         else:
             self.log("⚠ Браузер не найден — будет использован встроенный Chromium")
 
-        self.periodic_check()
+       # self.periodic_check()
 
     # ---------------- Лицензия ----------------
-    def periodic_check(self):
-        from license_client import recheck, load_license
-        key = load_license()
-        if key:
-            result = recheck(key)
-            if not result.get("ok"):
-                self.log("⛔ Лицензия недействительна или истекла. Остановка.")
-                self.running = False
-            else:
-                self.log(f"🔑 Лицензия активна. Осталось: {result.get('expires_in_hours')} ч.")
-        self.root.after(3600000, self.periodic_check)  # раз в час
-
+  # def periodic_check(self):
+    #     from license_client import recheck, load_license
+    #     key = load_license()
+    #     if key:
+    #         result = recheck(key)
+    #         if not result.get("ok"):
+    #             self.log("⛔ Лицензия недействительна или истекла. Остановка.")
+    #             self.running = False
+    #         else:
+    #             self.log(f"🔑 Лицензия активна. Осталось: {result.get('expires_in_hours')} ч.")
+    #     self.root.after(3600000, self.periodic_check)
     # ---------------- Утилиты ----------------
     def log(self, msg):
         self.q.put(str(msg))
