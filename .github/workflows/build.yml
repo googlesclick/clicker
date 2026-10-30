@@ -8,11 +8,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - run: python -m py_compile gui.py
       - run: pip install playwright pyinstaller
       - run: playwright install chrome
-      - run: pyinstaller --onefile --noconsole --name GoogleClicker gui.py license_client.py activation_window.py
+      - run: pyinstaller --onefile --noconsole --name GoogleClicker gui.py
       - uses: actions/upload-artifact@v4
         with:
           name: GoogleClicker
           path: dist/GoogleClicker.exe
-run: python -m py_compile gui.py
