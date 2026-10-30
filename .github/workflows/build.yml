@@ -1,0 +1,17 @@
+name: Build EXE
+on: push
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright pyinstaller
+      - run: playwright install chrome
+      - run: pyinstaller --onefile --noconsole --name GoogleClicker gui.py license_client.py activation_window.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GoogleClicker
+          path: dist/GoogleClicker.exe
