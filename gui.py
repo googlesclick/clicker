@@ -1,34 +1,62 @@
-# gui.py — Google Ads Clicker (лицензии + настоящий Google Chrome)
+# gui.py — Google Ads Clicker PRO
+# Лицензирование + работа через браузер, установленный на ПК
 import subprocess, sys, os, threading, queue, random, time
 import tkinter as tk
 from tkinter import scrolledtext, filedialog
 import urllib.request
-# ---------- Проверка / установка Google Chrome ----------
-def ensure_chrome():
+
+# ============================================================
+#  ПОИСК / УСТАНОВКА БРАУЗЕРА
+# ============================================================
+
+def find_browser():
+    """Ищет установленный браузер. Возвращает (channel, имя)."""
+    candidates = [
+        ("chrome",  "Google Chrome"),
+        ("msedge",  "Microsoft Edge"),
+        ("firefox", "Mozilla Firefox"),
+    ]
     try:
         from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            p.chromium.launch(channel="chrome", headless=True).close()
-        return  # Chrome уже установлен
+        for channel, name in candidates:
+            try:
+                with sync_playwright() as p:
+                    p.chromium.launch(channel=channel, headless=True).close()
+                return channel, name
+            except Exception:
+                continue
     except Exception:
         pass
-    # Chrome не найден — тихо устанавливаем с официального сайта Google
-    if sys.platform.startswith("win"):
-        try:
-            installer_url = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
-            installer_path = os.path.join(os.environ.get("TEMP", "."), "chrome_installer.exe")
-            urllib.request.urlretrieve(installer_url, installer_path)
-            subprocess.run(["powershell", "-Command",
-                            f"Start-Process '{installer_path}' -ArgumentList '/silent','/install' -Wait"],
-                           check=True)
-        except Exception:
-            pass  # продолжим — возможно, Chrome появится позже
+    return None, None
 
-ensure_chrome()
+
+def install_chrome():
+    """Тихая установка Chrome с официального сайта Google."""
+    if not sys.platform.startswith("win"):
+        return None, None
+    try:
+        installer_url = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
+        installer_path = os.path.join(os.environ.get("TEMP", "."), "chrome_installer.exe")
+        urllib.request.urlretrieve(installer_url, installer_path)
+        subprocess.run(["powershell", "-Command",
+                        f"Start-Process '{installer_path}' -ArgumentList '/silent','/install' -Wait"],
+                       check=True)
+        return "chrome", "Google Chrome"
+    except Exception:
+        return None, None
+
+
+BROWSER_CHANNEL, BROWSER_NAME = find_browser()
+
+if BROWSER_CHANNEL is None:
+    BROWSER_CHANNEL, BROWSER_NAME = install_chrome()
 
 from playwright.sync_api import sync_playwright
 
-# ---------- Константы ----------
+# ============================================================
+#  КОНСТАНТЫ
+# ============================================================
+
 UA_LIST = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36",
@@ -36,12 +64,15 @@ UA_LIST = [
 ]
 STEALTH = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
 
+# ============================================================
+#  ГЛАВНОЕ ПРИЛОЖЕНИЕ
+# ============================================================
 
 class ClickerApp:
     def __init__(self, root):
         self.root = root
-        root.title("Google Ads Clicker")
-        root.geometry("650x520")
+        root.title("Google Ads Clicker PRO")
+        root.geometry("650x540")
 
         frm = tk.Frame(root)
         frm.pack(fill="x", padx=10, pady=5)
@@ -71,9 +102,15 @@ class ClickerApp:
         self.keys, self.proxies = [], []
         self.running = False
 
+        # Информация о браузере
+        if BROWSER_NAME:
+            self.log(f"🌐 Браузер: {BROWSER_NAME}")
+        else:
+            self.log("⚠ Браузер не найден — будет использован встроенный Chromium")
+
         self.periodic_check()
 
-    # ---------- Лицензия ----------
+    # ---------------- Лицензия ----------------
     def periodic_check(self):
         from license_client import recheck, load_license
         key = load_license()
@@ -86,7 +123,7 @@ class ClickerApp:
                 self.log(f"🔑 Лицензия активна. Осталось: {result.get('expires_in_hours')} ч.")
         self.root.after(3600000, self.periodic_check)  # раз в час
 
-    # ---------- Утилиты ----------
+    # ---------------- Утилиты ----------------
     def log(self, msg):
         self.q.put(str(msg))
 
@@ -104,7 +141,7 @@ class ClickerApp:
                 self.proxies = [l.strip() for l in f if l.strip()]
             self.log(f"Загружено прокси: {len(self.proxies)}")
 
-    # ---------- Запуск ----------
+    # ---------------- Запуск / остановка ----------------
     def start(self):
         if self.running:
             self.running = False
@@ -123,13 +160,16 @@ class ClickerApp:
         thread = threading.Thread(target=self.worker, args=(domain, total), daemon=True)
         thread.start()
 
+    # ---------------- Рабочий цикл ----------------
     def worker(self, domain, total):
         done = 0
         try:
             with sync_playwright() as p:
                 while done < total and self.running:
                     proxy = random.choice(self.proxies) if self.proxies else None
-                    kwargs = {"headless": False, "channel": "chrome"}  # настоящий Google Chrome
+                    kwargs = {"headless": False}
+                    if BROWSER_CHANNEL:
+                        kwargs["channel"] = BROWSER_CHANNEL
                     if proxy:
                         kwargs["proxy"] = {"server": f"http://{proxy}"}
                         self.log(f"Прокси: {proxy.split('@')[-1]}")
@@ -191,6 +231,10 @@ class ClickerApp:
         self.running = False
         self.start_btn.config(text="▶ ЗАПУСТИТЬ", bg="#4CAF50")
 
+
+# ============================================================
+#  ТОЧКА ВХОДА: сначала активация, потом главное окно
+# ============================================================
 
 if __name__ == "__main__":
     from activation_window import show_activation
